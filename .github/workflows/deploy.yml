@@ -6,6 +6,7 @@ on:
       - deploy
     
     paths:
+      - ".github/**"
       - "src/**"
       - "Dockerfile"
       - "k8s/**"
@@ -21,7 +22,7 @@ env:
 
   EKS_CLUSTER: ${{ secrets.EKS_CLUSTER_NAME }}
   IMAGE_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}
-  
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -45,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SERVICE_NAME }}-image
-          path: $SERVICE_NAME.tar
+          path: ${{ env.SERVICE_NAME }}.tar
 
   deploy:
     needs: build

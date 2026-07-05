@@ -108,8 +108,7 @@ jobs:
 
       - name: Update Deployment
         run: |
-          kubectl set image deployment/$SERVICE_NAME \
-          $CONTAINER_NAME=$IMAGE_URI:${{ github.sha }}
+          kubectl set image deployment/$SERVICE_NAME $CONTAINER_NAME=$IMAGE_URI:${{ github.sha }}
 
       - name: Wait Rollout
         run: |

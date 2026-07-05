@@ -1,10 +1,12 @@
-name: CI/CD Pipeline de bonos-service
+name: CI/CD Pipeline bonos-service
 
 on:
   push:
     branches:
       - deploy
+    
     paths:
+      - ".github/**"
       - "src/**"
       - "Dockerfile"
       - "k8s/**"
@@ -14,8 +16,10 @@ env:
   SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
   CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+
   AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
   EKS_CLUSTER: ${{ secrets.EKS_CLUSTER_NAME }}
   IMAGE_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}
 
@@ -42,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SERVICE_NAME }}-image
-          path: $SERVICE_NAME.tar
+          path: ${{ env.SERVICE_NAME }}.tar
 
   deploy:
     needs: build
@@ -50,7 +54,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -78,14 +81,18 @@ jobs:
           docker tag \
             $SERVICE_NAME:latest \
             $IMAGE_URI:latest
+
           docker tag \
             $SERVICE_NAME:latest \
             $IMAGE_URI:${{ github.sha }}
       
       - name: Push image
         run: |
-          docker push $IMAGE_URI:latest
-          docker push $IMAGE_URI:${{ github.sha }}
+          docker push \
+          $IMAGE_URI:latest
+
+          docker push \
+          $IMAGE_URI:${{ github.sha }}
 
       - name: Configure kubeconfig
         run: |
@@ -102,7 +109,7 @@ jobs:
       - name: Update Deployment
         run: |
           kubectl set image deployment/$SERVICE_NAME \
-            $CONTAINER_NAME=$IMAGE_URI:${{ github.sha }}
+          $CONTAINER_NAME=$IMAGE_URI:${{ github.sha }}
 
       - name: Wait Rollout
         run: |

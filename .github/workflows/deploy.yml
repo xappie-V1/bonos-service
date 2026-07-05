@@ -1,0 +1,120 @@
+name: CI/CD Pipeline bonos-service
+
+on:
+  push:
+    branches:
+      - deploy
+    
+    paths:
+      - "src/**"
+      - "Dockerfile"
+      - "k8s/**"
+      - "requirements.txt"
+
+env:
+  SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+  EKS_CLUSTER: ${{ secrets.EKS_CLUSTER_NAME }}
+  IMAGE_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --pull \
+            -t $SERVICE_NAME:latest .
+      
+      - name: Save Docker image
+        run: |
+          docker save \
+            -o $SERVICE_NAME.tar \
+            $SERVICE_NAME:latest
+
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.SERVICE_NAME }}-image
+          path: $SERVICE_NAME.tar
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.SERVICE_NAME }}-image
+
+      - name: Load Docker image
+        run: |
+          docker load \
+            -i $SERVICE_NAME.tar
+    
+      - name: Tag image
+        run: |
+          docker tag \
+            $SERVICE_NAME:latest \
+            $IMAGE_URI:latest
+
+          docker tag \
+            $SERVICE_NAME:latest \
+            $IMAGE_URI:${{ github.sha }}
+      
+      - name: Push image
+        run: |
+          docker push \
+          $IMAGE_URI:latest
+
+          docker push \
+          $IMAGE_URI:${{ github.sha }}
+
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name $EKS_CLUSTER \
+            --region $AWS_REGION
+
+      - name: Verify EKS Cluster
+        run: |
+          aws eks describe-cluster \
+            --name $EKS_CLUSTER \
+            --region $AWS_REGION
+
+      - name: Update Deployment
+        run: |
+          kubectl set image deployment/$SERVICE_NAME \
+          $CONTAINER_NAME=$IMAGE_URI:${{ github.sha }}
+
+      - name: Wait Rollout
+        run: |
+          kubectl rollout status deployment/$SERVICE_NAME \
+            --timeout=180s
+          kubectl get nodes
+          kubectl get deployments
+          kubectl get services
+          kubectl get pods

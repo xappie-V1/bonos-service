@@ -1,4 +1,4 @@
-name: CI/CD Pipeline bonos-service
+name: CI/CD Pipeline de bonos-service
 
 on:
   push:

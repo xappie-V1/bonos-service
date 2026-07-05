@@ -1,3 +1,5 @@
+from fastapi.responses import JSONResponse
+
 """
 bonos-service
 =============
@@ -18,8 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .auth import usuario_actual
-from .db import conexion, dict_cursor, esperar_bd, init_schema
-
+from .db import conexion, dict_cursor, esperar_bd, init_schema, ping
+from fastapi.responses import JSONResponse
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -52,11 +54,42 @@ class ReclamarRequest(BaseModel):
     # (p.ej. lo que el usuario recarga o apostó). Ignorado en 'monto_fijo'.
     monto_base: float = Field(default=0, ge=0, description="Base para bonos por porcentaje")
 
-
 # TODO (alumno): implementar las rutas de salud que usará Kubernetes:
 #   - liveness: ¿el proceso está vivo? (respuesta simple).
 #   - readiness: ¿está listo para recibir tráfico? Debe verificar la BD.
 # Luego configurar livenessProbe/readinessProbe en el Deployment de EKS.
+
+@app.get("/livez")
+def liveness():
+    """
+    Kubernetes usa este endpoint para comprobar que el proceso sigue vivo.
+    No consulta la base de datos.
+    """
+    return {
+        "status": "ok",
+        "service": "bonos-service"
+    }
+
+@app.get("/readyz")
+def readiness():
+    """
+    Kubernetes usa este endpoint para comprobar que el servicio
+    está listo para recibir tráfico.
+    """
+
+    if ping():
+        return {
+            "status": "ready",
+            "database": "connected"
+        }
+
+    return JSONResponse(
+        status_code=503,
+        content={
+            "status": "not ready",
+            "database": "disconnected"
+        }
+    )
 
 
 @app.get("/api/bonos")

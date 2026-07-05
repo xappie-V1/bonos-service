@@ -106,6 +106,12 @@ jobs:
             --name $EKS_CLUSTER \
             --region $AWS_REGION
 
+      - name: Debug environment
+        run: |
+          echo "SERVICE_NAME length: ${#SERVICE_NAME}"
+          echo "CONTAINER_NAME length: ${#CONTAINER_NAME}"
+          echo "IMAGE_URI length: ${#IMAGE_URI}"
+
       - name: Update Deployment
         run: |
           kubectl set image deployment/$SERVICE_NAME $CONTAINER_NAME=$IMAGE_URI:${{ github.sha }}

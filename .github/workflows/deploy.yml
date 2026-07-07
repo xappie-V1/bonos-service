@@ -106,11 +106,12 @@ jobs:
             --name $EKS_CLUSTER \
             --region $AWS_REGION
 
-      - name: Debug environment
+      - name: Debug
         run: |
-          echo "SERVICE_NAME length: ${#SERVICE_NAME}"
-          echo "CONTAINER_NAME length: ${#CONTAINER_NAME}"
-          echo "IMAGE_URI length: ${#IMAGE_URI}"
+          echo "SERVICE_NAME=[$SERVICE_NAME]"
+          echo "CONTAINER_NAME=[$CONTAINER_NAME]"
+          echo "IMAGE_URI=[$IMAGE_URI]"
+          kubectl get deployment
 
       - name: Update Deployment
         run: |

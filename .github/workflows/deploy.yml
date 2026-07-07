@@ -111,25 +111,10 @@ jobs:
           kubectl get deployment
           kubectl get deployment $SERVICE_NAME
           kubectl describe deployment $SERVICE_NAME
-
-      - name: Debug variables
-        run: |
-          echo "SERVICE_NAME=[$SERVICE_NAME]"
-          echo "CONTAINER_NAME=[$CONTAINER_NAME]"
-          echo "IMAGE_URI=[$IMAGE_URI]"
-      
-          printf 'SERVICE_NAME bytes: '
-          echo -n "$SERVICE_NAME" | od -An -tx1
-      
-          printf 'CONTAINER_NAME bytes: '
-          echo -n "$CONTAINER_NAME" | od -An -tx1
-      
-          printf 'IMAGE_URI bytes: '
-          echo -n "$IMAGE_URI" | od -An -tx1
-
+  
       - name: Update Deployment
         run: |
-          kubectl set image deployment/bonos-service bonos-service=533267092848.dkr.ecr.us-east-1.amazonaws.com/bonos-service:${{ github.sha }}
+          kubectl set image deployment/$SERVICE_NAME $CONTAINER_NAME=$IMAGE_URI:${{ github.sha }}
 
       - name: Wait Rollout
         run: |

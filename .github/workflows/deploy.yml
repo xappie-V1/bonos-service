@@ -1,10 +1,9 @@
-name: CI/CD Pipeline bonos-service
+name: CI/CD Pipeline de bonos-service
 
 on:
   push:
     branches:
       - deploy
-    
     paths:
       - ".github/**"
       - "src/**"
@@ -16,10 +15,8 @@ env:
   SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
   CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
-
   AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-
   EKS_CLUSTER: ${{ secrets.EKS_CLUSTER_NAME }}
   IMAGE_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}
 
@@ -54,6 +51,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -81,18 +79,14 @@ jobs:
           docker tag \
             $SERVICE_NAME:latest \
             $IMAGE_URI:latest
-
           docker tag \
             $SERVICE_NAME:latest \
             $IMAGE_URI:${{ github.sha }}
       
       - name: Push image
         run: |
-          docker push \
-          $IMAGE_URI:latest
-
-          docker push \
-          $IMAGE_URI:${{ github.sha }}
+          docker push $IMAGE_URI:latest
+          docker push $IMAGE_URI:${{ github.sha }}
 
       - name: Configure kubeconfig
         run: |
@@ -106,15 +100,10 @@ jobs:
             --name $EKS_CLUSTER \
             --region $AWS_REGION
 
-      - name: Verify deployment
-        run: |
-          kubectl get deployment
-          kubectl get deployment $SERVICE_NAME
-          kubectl describe deployment $SERVICE_NAME
-
       - name: Update Deployment
         run: |
-          kubectl set image deployment/$SERVICE_NAME $CONTAINER_NAME=$IMAGE_URI:${{ github.sha }}
+          kubectl set image deployment/$SERVICE_NAME \
+            $CONTAINER_NAME=$IMAGE_URI:${{ github.sha }}
 
       - name: Wait Rollout
         run: |
